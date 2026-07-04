@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     vapid_public_key: str = ""
     vapid_private_key: str = ""
     rescan_secret: str = ""
+    demo_secret: str = ""  # set to enable /demo/reset; leave blank in prod
 
     allowed_origins: list[str] = [
         "http://localhost:5173",

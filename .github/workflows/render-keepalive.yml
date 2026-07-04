@@ -1,0 +1,19 @@
+name: Render Keep-Alive
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # every 10 min — Render free tier spins down after 15 min idle
+  workflow_dispatch:          # allow manual warm before a demo
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render backend
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 \
+            "${{ secrets.NAVYASATHI_API_URL }}/health")
+          echo "Render /health HTTP status: $STATUS"
+          if [ "$STATUS" -lt 200 ] || [ "$STATUS" -ge 500 ]; then
+            echo "Warm-up ping failed with status $STATUS" && exit 1
+          fi

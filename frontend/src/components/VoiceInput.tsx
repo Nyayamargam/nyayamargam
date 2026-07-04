@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { getT } from '../i18n'
 import { type SarvamLanguage, transcribeAudio } from '../services/sarvam'
 
 type Phase = 'idle' | 'recording' | 'transcribing' | 'confirming' | 'error'
@@ -16,6 +17,10 @@ export function VoiceInput({ language, onConfirm, disabled = false }: VoiceInput
   const mediaRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
 
+  // Derive lang from SarvamLanguage ('en-IN' → 'en')
+  const lang = language.split('-')[0]
+  const t = getT(lang)
+
   async function startRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -31,17 +36,17 @@ export function VoiceInput({ language, onConfirm, disabled = false }: VoiceInput
       }
       mr.onstop = handleStop
       mediaRef.current = mr
-      mr.start(250) // collect data every 250ms
+      mr.start(250)
       setPhase('recording')
     } catch {
-      setErrorMsg('Microphone access denied. Please allow microphone access and try again.')
+      setErrorMsg(t.voiceDenied)
       setPhase('error')
     }
   }
 
   function stopRecording() {
     mediaRef.current?.stop()
-    mediaRef.current?.stream.getTracks().forEach((t) => t.stop())
+    mediaRef.current?.stream.getTracks().forEach((track) => track.stop())
     setPhase('transcribing')
   }
 
@@ -53,7 +58,7 @@ export function VoiceInput({ language, onConfirm, disabled = false }: VoiceInput
       setTranscript(result.transcript)
       setPhase('confirming')
     } catch {
-      setErrorMsg('Could not understand the audio. Please try again or type your answer.')
+      setErrorMsg(t.voiceError)
       setPhase('error')
     }
   }
@@ -75,28 +80,28 @@ export function VoiceInput({ language, onConfirm, disabled = false }: VoiceInput
   if (phase === 'confirming') {
     return (
       <div className="flex flex-col gap-2 p-3 bg-blue-50 rounded-xl border border-blue-200">
-        <p className="text-xs text-blue-600 font-medium">Confirm your message:</p>
+        <p className="text-xs text-blue-600 font-medium">{t.voiceConfirmLabel}</p>
         <textarea
           className="w-full resize-none text-sm text-gray-800 bg-white rounded-lg border border-gray-200 p-2 focus:outline-none focus:ring-2 focus:ring-brand"
           rows={2}
           value={transcript}
           onChange={(e) => setTranscript(e.target.value)}
-          aria-label="Edit transcript before sending"
+          aria-label={t.voiceEditLabel}
         />
         <div className="flex gap-2">
           <button
             onClick={confirm}
-            className="flex-1 bg-brand text-white text-sm font-medium rounded-lg py-2 hover:bg-brand-dark transition-colors"
-            aria-label="Confirm and send"
+            aria-label={t.voiceConfirmSendLabel}
+            className="flex-1 bg-brand text-white text-sm font-medium rounded-lg py-2 hover:bg-brand-dark transition-colors min-h-[44px]"
           >
-            Send
+            {t.voiceSend}
           </button>
           <button
             onClick={retry}
-            className="flex-1 bg-white text-gray-600 text-sm font-medium rounded-lg py-2 border border-gray-200 hover:bg-gray-50 transition-colors"
-            aria-label="Try recording again"
+            aria-label={t.voiceReRecord}
+            className="flex-1 bg-white text-gray-600 text-sm font-medium rounded-lg py-2 border border-gray-200 hover:bg-gray-50 transition-colors min-h-[44px]"
           >
-            Re-record
+            {t.voiceReRecord}
           </button>
         </div>
       </div>
@@ -105,13 +110,13 @@ export function VoiceInput({ language, onConfirm, disabled = false }: VoiceInput
 
   if (phase === 'error') {
     return (
-      <div className="flex flex-col gap-2 p-3 bg-red-50 rounded-xl border border-red-200">
+      <div className="flex flex-col gap-2 p-3 bg-red-50 rounded-xl border border-red-200" role="alert">
         <p className="text-xs text-red-600">{errorMsg}</p>
         <button
           onClick={retry}
-          className="self-start text-sm text-red-600 underline"
+          className="self-start text-sm text-red-600 underline min-h-[44px]"
         >
-          Try again
+          {t.voiceTryAgain}
         </button>
       </div>
     )
@@ -123,10 +128,10 @@ export function VoiceInput({ language, onConfirm, disabled = false }: VoiceInput
       disabled={disabled || phase === 'transcribing'}
       aria-label={
         phase === 'idle'
-          ? 'Start voice input'
+          ? t.voiceStartLabel
           : phase === 'recording'
-            ? 'Stop recording'
-            : 'Transcribing…'
+            ? t.voiceStopLabel
+            : t.voiceTranscribingLabel
       }
       className={`flex items-center justify-center w-12 h-12 rounded-full transition-all ${
         phase === 'recording'
@@ -137,7 +142,7 @@ export function VoiceInput({ language, onConfirm, disabled = false }: VoiceInput
       }`}
     >
       {phase === 'transcribing' ? (
-        <span className="text-xs">…</span>
+        <span className="text-xs" aria-hidden="true">…</span>
       ) : (
         <MicIcon />
       )}

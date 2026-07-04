@@ -82,6 +82,19 @@ const STRINGS = {
     // AlertCard
     dismissAriaLabel: 'Dismiss alert',
 
+    // VoiceInput
+    voiceDenied: 'Microphone access denied. Please allow microphone access and try again.',
+    voiceError: 'Could not understand the audio. Please try again or type your answer.',
+    voiceConfirmLabel: 'Confirm your message:',
+    voiceSend: 'Send',
+    voiceReRecord: 'Re-record',
+    voiceTryAgain: 'Try again',
+    voiceStartLabel: 'Start voice input',
+    voiceStopLabel: 'Stop recording',
+    voiceTranscribingLabel: 'Transcribing…',
+    voiceEditLabel: 'Edit transcript before sending',
+    voiceConfirmSendLabel: 'Confirm and send',
+
     // Document type labels (glossary)
     docTypes: {
       insurance: 'Insurance Certificate',
@@ -173,6 +186,18 @@ const STRINGS = {
 
     dismissAriaLabel: 'सूचना खारिज करें',
 
+    voiceDenied: 'माइक्रोफ़ोन एक्सेस अस्वीकृत। कृपया माइक्रोफ़ोन की अनुमति दें और फिर से कोशिश करें।',
+    voiceError: 'ऑडियो समझ नहीं आई। कृपया फिर से कोशिश करें या उत्तर टाइप करें।',
+    voiceConfirmLabel: 'अपना संदेश पुष्टि करें:',
+    voiceSend: 'भेजें',
+    voiceReRecord: 'फिर से रिकॉर्ड करें',
+    voiceTryAgain: 'फिर कोशिश करें',
+    voiceStartLabel: 'वॉइस इनपुट शुरू करें',
+    voiceStopLabel: 'रिकॉर्डिंग रोकें',
+    voiceTranscribingLabel: 'ट्रांसक्राइब हो रहा है…',
+    voiceEditLabel: 'भेजने से पहले संपादित करें',
+    voiceConfirmSendLabel: 'पुष्टि करें और भेजें',
+
     docTypes: {
       insurance: 'बीमा प्रमाण-पत्र',
       dl: 'ड्राइविंग लाइसेंस',
@@ -261,6 +286,18 @@ const STRINGS = {
     rejectionRuleSection: 'నిబంధన / సెక్షన్:',
 
     dismissAriaLabel: 'హెచ్చరికను తొలగించండి',
+
+    voiceDenied: 'మైక్రోఫోన్ యాక్సెస్ తిరస్కరించబడింది. దయచేసి మైక్రోఫోన్‌ను అనుమతించి మళ్ళీ ప్రయత్నించండి.',
+    voiceError: 'ఆడియో అర్థం కాలేదు. దయచేసి మళ్ళీ ప్రయత్నించండి లేదా సమాధానం టైప్ చేయండి.',
+    voiceConfirmLabel: 'మీ సందేశాన్ని నిర్ధారించండి:',
+    voiceSend: 'పంపండి',
+    voiceReRecord: 'మళ్ళీ రికార్డ్ చేయండి',
+    voiceTryAgain: 'మళ్ళీ ప్రయత్నించండి',
+    voiceStartLabel: 'వాయిస్ ఇన్‌పుట్ ప్రారంభించండి',
+    voiceStopLabel: 'రికార్డింగ్ ఆపండి',
+    voiceTranscribingLabel: 'ట్రాన్స్‌క్రైబ్ అవుతోంది…',
+    voiceEditLabel: 'పంపే ముందు సవరించండి',
+    voiceConfirmSendLabel: 'నిర్ధారించి పంపండి',
 
     docTypes: {
       insurance: 'బీమా సర్టిఫికేట్',
