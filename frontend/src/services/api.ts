@@ -19,6 +19,7 @@ export interface CreateCaseResponse {
 
 export interface SendMessageResponse {
   reply: string
+  reasoning: string
   status: string
   slots_filled: Record<string, unknown>
   intake_complete: boolean

@@ -42,6 +42,7 @@ class SendMessageRequest(BaseModel):
 
 class SendMessageResponse(BaseModel):
     reply: str
+    reasoning: str = ""
     status: CaseStatus
     slots_filled: dict[str, Any]
     intake_complete: bool = False

@@ -87,7 +87,7 @@ async def send_message(
     }
     messages = list(case["messages"]) + [user_msg]
 
-    reply, updated_slots, intake_complete = await process_message(
+    reply, updated_slots, intake_complete, reasoning = await process_message(
         messages=messages,
         current_slots=case["slots"],
         language=body.language or case["language"],
@@ -108,6 +108,7 @@ async def send_message(
 
     return SendMessageResponse(
         reply=reply,
+        reasoning=reasoning,
         status=new_status,
         slots_filled=updated_slots,
         intake_complete=intake_complete,

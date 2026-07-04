@@ -5,6 +5,26 @@ import { VoiceInput } from '../components/VoiceInput'
 import { type CaseMessage, api } from '../services/api'
 import { type SarvamLanguage } from '../services/sarvam'
 
+function ReasoningChip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="ml-3 mb-3 -mt-2">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="text-xs text-gray-400 hover:text-brand flex items-center gap-1 transition-colors"
+      >
+        <span className="text-[10px]">{open ? '▲' : '▼'}</span>
+        Why am I being asked this?
+      </button>
+      {open && (
+        <p className="mt-1.5 text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 max-w-xs leading-relaxed">
+          {text}
+        </p>
+      )}
+    </div>
+  )
+}
+
 const LANG_TO_SARVAM: Record<string, SarvamLanguage> = {
   en: 'en-IN',
   hi: 'hi-IN',
@@ -16,6 +36,7 @@ export function Intake() {
   const navigate = useNavigate()
 
   const [messages, setMessages] = useState<CaseMessage[]>([])
+  const [reasonings, setReasonings] = useState<Record<number, string>>({})
   const [textInput, setTextInput] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
@@ -46,11 +67,10 @@ export function Intake() {
     setSending(true)
     setError('')
 
-    const optimistic: CaseMessage = {
-      role: 'user',
-      content,
-      timestamp: new Date().toISOString(),
-    }
+    // Capture indices before any state mutations so they're stable across the await
+    const assistantIndex = messages.length + 1
+
+    const optimistic: CaseMessage = { role: 'user', content, timestamp: new Date().toISOString() }
     setMessages((prev) => [...prev, optimistic])
     setTextInput('')
 
@@ -62,13 +82,14 @@ export function Intake() {
         timestamp: new Date().toISOString(),
       }
       setMessages((prev) => [...prev, assistantMsg])
-
+      if (res.reasoning) {
+        setReasonings((prev) => ({ ...prev, [assistantIndex]: res.reasoning }))
+      }
       if (res.intake_complete) {
         setTimeout(() => navigate(`/case/${code}`), 1800)
       }
     } catch {
       setError('Something went wrong. Please try again.')
-      // Remove the optimistic message on failure
       setMessages((prev) => prev.slice(0, -1))
     } finally {
       setSending(false)
@@ -106,7 +127,12 @@ export function Intake() {
       {/* Messages */}
       <main className="flex-1 overflow-y-auto px-4 py-4" aria-live="polite" aria-label="Conversation">
         {messages.map((m, i) => (
-          <MessageBubble key={i} role={m.role} content={m.content} />
+          <div key={i}>
+            <MessageBubble role={m.role} content={m.content} />
+            {m.role === 'assistant' && reasonings[i] && (
+              <ReasoningChip text={reasonings[i]} />
+            )}
+          </div>
         ))}
         {sending && (
           <div className="flex justify-start mb-3">

@@ -63,10 +63,12 @@ summary of what you've recorded, then tell the user you'll now prepare their Cas
 - NEVER ask more than one question per reply.
 - NEVER use the words "slot", "intake", "JSON", "LLM", "AI", or any technical jargon with the user.
 - The reply field must be warm conversational prose.
+- The reasoning field must be plain language the user can understand; no jargon. Set it to "" when intake_complete is true.
 
 ## Output format — return ONLY valid JSON, nothing else
 {
   "reply": "<your single question or summary in the correct language>",
+  "reasoning": "<one sentence in plain language explaining the procedural reason this information is needed; empty string when intake_complete is true>",
   "slots": {
     "incident_type": null,
     "incident_date": null,
@@ -104,7 +106,7 @@ async def process_message(
     messages: list[dict],
     current_slots: dict,
     language: str,
-) -> tuple[str, dict, bool]:
+) -> tuple[str, dict, bool, str]:
     s = get_settings()
 
     filled_slots = json.dumps(current_slots, ensure_ascii=False, indent=2)
@@ -134,11 +136,12 @@ async def process_message(
         raw = response.text
     except Exception as exc:
         logger.error("Gemini API error: %s", exc)
-        return "I'm sorry, I had a technical issue. Could you please repeat what you said?", current_slots, False
+        return "I'm sorry, I had a technical issue. Could you please repeat what you said?", current_slots, False, ""
 
     try:
         parsed = json.loads(raw)
         reply: str = parsed["reply"]
+        reasoning: str = parsed.get("reasoning", "")
         new_slots: dict = parsed.get("slots", {})
         intake_complete: bool = bool(parsed.get("intake_complete", False))
 
@@ -147,11 +150,11 @@ async def process_message(
             if v is not None and v != [] and v != "":
                 merged[k] = v
 
-        return reply, merged, intake_complete
+        return reply, merged, intake_complete, reasoning
 
     except (json.JSONDecodeError, KeyError) as exc:
         logger.warning("Failed to parse Gemini JSON (%s). Raw: %.200s", exc, raw)
-        return raw, current_slots, False
+        return raw, current_slots, False, ""
 
 
 def get_opening_message(language: str) -> str:
