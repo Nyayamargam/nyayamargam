@@ -13,6 +13,7 @@ export interface DocumentRecord {
 
 export interface CreateCaseResponse {
   code: string
+  domain: string
   status: string
   first_message: string
 }
@@ -56,8 +57,8 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 export const api = {
-  createCase: (language: string) =>
-    post<CreateCaseResponse>('/case', { language }),
+  createCase: (language: string, domain: string) =>
+    post<CreateCaseResponse>('/case', { language, domain }),
 
   sendMessage: (code: string, content: string, language?: string) =>
     post<SendMessageResponse>(`/case/${code}/message`, { content, language }),

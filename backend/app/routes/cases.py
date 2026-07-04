@@ -9,6 +9,7 @@ from supabase import Client
 
 from app.db.supabase import get_supabase
 from app.models.case import (
+    VALID_DOMAINS,
     CaseStatus,
     CreateCaseRequest,
     CreateCaseResponse,
@@ -39,10 +40,13 @@ async def create_case(body: CreateCaseRequest, db: Client = Depends(get_supabase
     if not code:
         raise HTTPException(500, "Could not generate a unique case code")
 
-    opening = get_opening_message(body.language)
+    if body.domain not in VALID_DOMAINS:
+        raise HTTPException(400, f"domain must be one of: {', '.join(sorted(VALID_DOMAINS))}")
+
+    opening = get_opening_message(body.language, body.domain)
     row = {
         "code": code,
-        "domain": "vehicle_traffic",
+        "domain": body.domain,
         "language": body.language,
         "status": CaseStatus.INTAKE,
         "slots": {},
@@ -55,7 +59,7 @@ async def create_case(body: CreateCaseRequest, db: Client = Depends(get_supabase
         ],
     }
     db.table("cases").insert(row).execute()
-    return CreateCaseResponse(code=code, status=CaseStatus.INTAKE, first_message=opening)
+    return CreateCaseResponse(code=code, domain=body.domain, status=CaseStatus.INTAKE, first_message=opening)
 
 
 @router.get("/{code}")
@@ -91,6 +95,7 @@ async def send_message(
         messages=messages,
         current_slots=case["slots"],
         language=body.language or case["language"],
+        domain=case.get("domain", "vehicle_traffic"),
     )
 
     assistant_msg = {

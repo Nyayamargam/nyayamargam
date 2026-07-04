@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 
 type Lang = 'en' | 'hi' | 'te'
+type Domain = 'vehicle_traffic' | 'pension_welfare' | 'utility_consumer'
 
 const LANG_LABELS: Record<Lang, string> = {
   en: 'English',
@@ -10,9 +11,28 @@ const LANG_LABELS: Record<Lang, string> = {
   te: 'తెలుగు',
 }
 
-const COPY: Record<Lang, { tagline: string; start: string; resume: string; resumePlaceholder: string; resumeBtn: string; notFound: string }> = {
+const DOMAINS: { id: Domain; label: string; description: string }[] = [
+  {
+    id: 'vehicle_traffic',
+    label: 'Vehicle / Traffic',
+    description: 'Challans, seizures, licence & RC issues',
+  },
+  {
+    id: 'pension_welfare',
+    label: 'Pension / Welfare',
+    description: 'Government pensions, welfare schemes, Ayushman Bharat',
+  },
+  {
+    id: 'utility_consumer',
+    label: 'Consumer / Utility',
+    description: 'Electricity, water, billing disputes, consumer complaints',
+  },
+]
+
+const COPY: Record<Lang, { tagline: string; chooseDomain: string; start: string; resume: string; resumePlaceholder: string; resumeBtn: string; notFound: string }> = {
   en: {
     tagline: 'Your legal companion for government procedures',
+    chooseDomain: 'What is your matter about?',
     start: 'Start a New Case',
     resume: 'Resume an Existing Case',
     resumePlaceholder: 'Enter your 6-character case code',
@@ -21,6 +41,7 @@ const COPY: Record<Lang, { tagline: string; start: string; resume: string; resum
   },
   hi: {
     tagline: 'सरकारी प्रक्रियाओं के लिए आपका कानूनी साथी',
+    chooseDomain: 'आपका मामला किस बारे में है?',
     start: 'नया केस शुरू करें',
     resume: 'मौजूदा केस फिर से खोलें',
     resumePlaceholder: '6 अक्षरों का केस कोड दर्ज करें',
@@ -29,6 +50,7 @@ const COPY: Record<Lang, { tagline: string; start: string; resume: string; resum
   },
   te: {
     tagline: 'ప్రభుత్వ విధానాలకు మీ చట్టపరమైన సహచరుడు',
+    chooseDomain: 'మీ విషయం దేని గురించి?',
     start: 'కొత్త కేసు ప్రారంభించండి',
     resume: 'ఉన్న కేసు తిరిగి తెరవండి',
     resumePlaceholder: '6 అక్షరాల కేసు కోడ్ నమోదు చేయండి',
@@ -40,7 +62,10 @@ const COPY: Record<Lang, { tagline: string; start: string; resume: string; resum
 export function Home() {
   const navigate = useNavigate()
   const storedLang = (localStorage.getItem('navyasathi_lang') as Lang) || 'en'
+  const storedDomain = (localStorage.getItem('navyasathi_domain') as Domain) || 'vehicle_traffic'
+
   const [lang, setLang] = useState<Lang>(storedLang)
+  const [domain, setDomain] = useState<Domain>(storedDomain)
   const [resumeCode, setResumeCode] = useState('')
   const [starting, setStarting] = useState(false)
   const [resumeError, setResumeError] = useState('')
@@ -50,10 +75,15 @@ export function Home() {
     localStorage.setItem('navyasathi_lang', l)
   }
 
+  function selectDomain(d: Domain) {
+    setDomain(d)
+    localStorage.setItem('navyasathi_domain', d)
+  }
+
   async function startCase() {
     setStarting(true)
     try {
-      const res = await api.createCase(lang)
+      const res = await api.createCase(lang, domain)
       navigate(`/intake/${res.code}`)
     } finally {
       setStarting(false)
@@ -79,7 +109,7 @@ export function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-brand to-brand-light flex flex-col items-center justify-center px-4 py-12">
-      {/* Logo / header */}
+      {/* Logo */}
       <div className="text-center mb-10">
         <h1 className="text-4xl font-bold text-white tracking-tight">NavyaSathi</h1>
         <p className="mt-2 text-blue-100 text-base">{t.tagline}</p>
@@ -93,9 +123,7 @@ export function Home() {
             onClick={() => selectLang(l)}
             aria-pressed={lang === l}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              lang === l
-                ? 'bg-white text-brand shadow'
-                : 'bg-white/20 text-white hover:bg-white/30'
+              lang === l ? 'bg-white text-brand shadow' : 'bg-white/20 text-white hover:bg-white/30'
             }`}
           >
             {LANG_LABELS[l]}
@@ -105,7 +133,32 @@ export function Home() {
 
       {/* Card */}
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 flex flex-col gap-5">
-        {/* Start new case */}
+
+        {/* Domain picker */}
+        <div>
+          <p className="text-sm font-medium text-gray-600 mb-2">{t.chooseDomain}</p>
+          <div className="flex flex-col gap-2">
+            {DOMAINS.map((d) => (
+              <button
+                key={d.id}
+                onClick={() => selectDomain(d.id)}
+                aria-pressed={domain === d.id}
+                className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all ${
+                  domain === d.id
+                    ? 'border-brand bg-brand/5'
+                    : 'border-gray-100 hover:border-gray-200'
+                }`}
+              >
+                <p className={`text-sm font-semibold ${domain === d.id ? 'text-brand' : 'text-gray-800'}`}>
+                  {d.label}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">{d.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Start button */}
         <button
           onClick={startCase}
           disabled={starting}
@@ -120,7 +173,7 @@ export function Home() {
           <div className="flex-1 h-px bg-gray-200" />
         </div>
 
-        {/* Resume existing case */}
+        {/* Resume case */}
         <div>
           <p className="text-sm font-medium text-gray-600 mb-2">{t.resume}</p>
           <div className="flex gap-2">
@@ -142,9 +195,7 @@ export function Home() {
             </button>
           </div>
           {resumeError && (
-            <p className="mt-2 text-xs text-red-500" role="alert">
-              {resumeError}
-            </p>
+            <p className="mt-2 text-xs text-red-500" role="alert">{resumeError}</p>
           )}
         </div>
       </div>

@@ -25,12 +25,17 @@ class Message(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 
+VALID_DOMAINS = {"vehicle_traffic", "pension_welfare", "utility_consumer"}
+
+
 class CreateCaseRequest(BaseModel):
     language: str = "en"
+    domain: str = "vehicle_traffic"
 
 
 class CreateCaseResponse(BaseModel):
     code: str
+    domain: str
     status: CaseStatus
     first_message: str
 
