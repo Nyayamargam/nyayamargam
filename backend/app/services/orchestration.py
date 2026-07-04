@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 
-from anthropic import AsyncAnthropic
+import google.generativeai as genai
 
 from app.config import get_settings
 from app.services.knowledge import get_vehicle_traffic_context
@@ -64,9 +64,9 @@ summary of what you've recorded, then tell the user you'll now prepare their Cas
 - The reply field must be warm conversational prose.
 
 ## Output format — return ONLY valid JSON, nothing else
-{{
+{
   "reply": "<your single question or summary in the correct language>",
-  "slots": {{
+  "slots": {
     "incident_type": null,
     "incident_date": null,
     "incident_location": null,
@@ -76,9 +76,9 @@ summary of what you've recorded, then tell the user you'll now prepare their Cas
     "offence_section": null,
     "documents_at_hand": [],
     "desired_outcome": null
-  }},
+  },
   "intake_complete": false
-}}\
+}\
 """
 
 OPENING_MESSAGES = {
@@ -88,16 +88,17 @@ OPENING_MESSAGES = {
 }
 
 
-def _strip_markdown_fence(raw: str) -> str:
-    raw = raw.strip()
-    if raw.startswith("```"):
-        parts = raw.split("```")
-        # parts[1] is the fenced block content
-        inner = parts[1] if len(parts) > 1 else raw
-        if inner.startswith("json"):
-            inner = inner[4:]
-        return inner.strip()
-    return raw
+def _build_gemini_history(messages: list[dict]) -> list[dict]:
+    """Convert internal message dicts to Gemini's {role, parts} format.
+    Gemini uses 'model' instead of 'assistant', and history must alternate user/model.
+    """
+    history = []
+    for m in messages:
+        if m["role"] not in ("user", "assistant"):
+            continue
+        role = "model" if m["role"] == "assistant" else "user"
+        history.append({"role": role, "parts": [{"text": m["content"]}]})
+    return history
 
 
 async def process_message(
@@ -106,7 +107,6 @@ async def process_message(
     language: str,
 ) -> tuple[str, dict, bool]:
     s = get_settings()
-    client = AsyncAnthropic(api_key=s.anthropic_api_key)
 
     filled_slots = json.dumps(current_slots, ensure_ascii=False, indent=2)
     knowledge_context = get_vehicle_traffic_context()
@@ -117,26 +117,27 @@ async def process_message(
         knowledge_context=knowledge_context,
     )
 
-    claude_messages = [
-        {"role": m["role"], "content": m["content"]}
-        for m in messages
-        if m["role"] in ("user", "assistant")
-    ]
+    # Split history (all but last user message) from the new message
+    history = _build_gemini_history(messages[:-1])
+    last_content = messages[-1]["content"]
 
     try:
-        response = await client.messages.create(
-            model="claude-sonnet-4-5",
-            max_tokens=1024,
-            system=system,
-            messages=claude_messages,
+        genai.configure(api_key=s.gemini_api_key)
+        model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash",
+            system_instruction=system,
+            generation_config=genai.GenerationConfig(
+                response_mime_type="application/json",
+                temperature=0.3,
+            ),
         )
-        raw = response.content[0].text
+        chat = model.start_chat(history=history)
+        response = await chat.send_message_async(last_content)
+        raw = response.text
     except Exception as exc:
-        logger.error("Claude API error: %s", exc)
+        logger.error("Gemini API error: %s", exc)
         fallback = "I'm sorry, I had a technical issue. Could you please repeat what you said?"
         return fallback, current_slots, False
-
-    raw = _strip_markdown_fence(raw)
 
     try:
         parsed = json.loads(raw)
@@ -144,7 +145,6 @@ async def process_message(
         new_slots: dict = parsed.get("slots", {})
         intake_complete: bool = bool(parsed.get("intake_complete", False))
 
-        # Merge: keep existing non-null values; only update keys Claude returned
         merged = {**current_slots}
         for k, v in new_slots.items():
             if v is not None and v != [] and v != "":
@@ -153,7 +153,7 @@ async def process_message(
         return reply, merged, intake_complete
 
     except (json.JSONDecodeError, KeyError) as exc:
-        logger.warning("Failed to parse Claude JSON (%s). Raw: %.200s", exc, raw)
+        logger.warning("Failed to parse Gemini JSON (%s). Raw: %.200s", exc, raw)
         return raw, current_slots, False
 
 

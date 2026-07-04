@@ -9,7 +9,6 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    anthropic_api_key: str = ""
     gemini_api_key: str = ""
     sarvam_api_key: str = ""
     supabase_url: str = ""
