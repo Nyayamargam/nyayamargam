@@ -2,6 +2,12 @@ const BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
 export type ValidityStatus = 'pending' | 'valid' | 'expired' | 'invalid' | 'needs_review'
 
+export interface RejectionExplanation {
+  reason_plain: string
+  action_plan: string
+  relevant_section: string
+}
+
 export interface DocumentRecord {
   id: string
   document_type: string
@@ -9,6 +15,7 @@ export interface DocumentRecord {
   validity_status: ValidityStatus
   expiry_date: string | null
   uploaded_at: string
+  rejection_explanation?: RejectionExplanation | null
 }
 
 export interface CreateCaseResponse {
@@ -117,4 +124,19 @@ export const api = {
     }).then((r) => {
       if (!r.ok) throw new Error(`API ${r.status}`)
     }),
+
+  downloadDraft: async (code: string): Promise<void> => {
+    const res = await fetch(`${BASE}/case/${code}/draft.pdf`)
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new Error(`Draft ${res.status}: ${text}`)
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `navyasathi-${code.toLowerCase()}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+  },
 }

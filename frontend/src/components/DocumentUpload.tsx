@@ -7,6 +7,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   rc_book: 'RC Book',
   puc: 'PUC Certificate',
   challan_receipt: 'Challan Receipt',
+  rejection_slip: 'Rejection Slip / Letter',
 }
 
 async function compressImage(file: File): Promise<Blob> {

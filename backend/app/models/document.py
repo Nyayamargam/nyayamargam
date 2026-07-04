@@ -13,3 +13,4 @@ class DocumentRecord(BaseModel):
     validity_status: str
     expiry_date: date | None
     uploaded_at: datetime
+    rejection_explanation: dict[str, Any] | None = None

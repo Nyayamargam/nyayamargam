@@ -3,8 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { AlertCard } from '../components/AlertCard'
 import { DocumentReviewCard } from '../components/DocumentReviewCard'
 import { DocumentUpload } from '../components/DocumentUpload'
+import { DraftDownloadButton } from '../components/DraftDownloadButton'
 import { MessageBubble } from '../components/MessageBubble'
 import { PushSubscriptionButton } from '../components/PushSubscriptionButton'
+import { RejectionExplainerCard } from '../components/RejectionExplainerCard'
 import { type CaseAlert, type CaseDetail, type DocumentRecord, api } from '../services/api'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -161,14 +163,19 @@ export function CaseWorkspace() {
         )}
 
         {/* Document upload — shown once intake is complete */}
-        {caseData.status === 'pending_docs' && (
+        {(caseData.status === 'pending_docs' || caseData.status === 'ready') && (
           <section aria-label="Documents">
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
               Documents
             </h2>
             <div className="flex flex-col gap-3">
               {documents.map((doc) => (
-                <DocumentReviewCard key={doc.id} record={doc} />
+                <div key={doc.id} className="flex flex-col gap-2">
+                  <DocumentReviewCard record={doc} />
+                  {doc.document_type === 'rejection_slip' && doc.rejection_explanation && (
+                    <RejectionExplainerCard explanation={doc.rejection_explanation} />
+                  )}
+                </div>
               ))}
               <DocumentUpload
                 caseCode={caseData.code}
@@ -181,6 +188,7 @@ export function CaseWorkspace() {
         {/* Case Watch controls */}
         {caseData.status !== 'intake' && caseData.status !== 'closed' && (
           <section aria-label="Case Watch" className="flex flex-col gap-3">
+            <DraftDownloadButton caseCode={caseData.code} />
             <PushSubscriptionButton caseCode={caseData.code} />
             <button
               onClick={handleClose}

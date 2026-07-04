@@ -49,6 +49,16 @@ _EXTRACT_PROMPT: dict[str, str] = {
         '"fine_amount":null,"court_date":null,"issuing_authority":null,"confidence":"high"}\n'
         "Dates as YYYY-MM-DD. fine_amount as a number."
     ),
+    "rejection_slip": (
+        "Extract every readable field from this government rejection slip or rejection letter image. "
+        "Return ONLY valid JSON with this exact schema — use null for fields you cannot read:\n"
+        '{"rejection_date":null,"issuing_authority":null,"applicant_name":null,'
+        '"application_number":null,"scheme_or_service":null,"rejection_reason":null,'
+        '"section_cited":null,"confidence":"high"}\n'
+        "Dates as YYYY-MM-DD. "
+        "rejection_reason: copy the exact text of the stated reason as written on the document. "
+        "section_cited: the rule/section/act number cited, if any."
+    ),
 }
 
 # Field that carries the expiry date for each document type; None = no expiry concept
@@ -58,6 +68,7 @@ _EXPIRY_FIELD: dict[str, str | None] = {
     "dl": "valid_to",
     "puc": "valid_upto",
     "challan_receipt": None,
+    "rejection_slip": None,
 }
 
 
