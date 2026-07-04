@@ -3,8 +3,7 @@ from __future__ import annotations
 import json
 import logging
 
-from google import genai
-from google.genai import types
+from groq import AsyncGroq
 
 from app.config import get_settings
 from app.services.rag import get_rag_context
@@ -243,13 +242,12 @@ def _build_system_prompt(
 
 # ── Message history helpers ───────────────────────────────────────────────────
 
-def _build_history(messages: list[dict]) -> list[types.Content]:
+def _build_history(messages: list[dict]) -> list[dict]:
     history = []
     for m in messages:
         if m["role"] not in ("user", "assistant"):
             continue
-        role = "model" if m["role"] == "assistant" else "user"
-        history.append(types.Content(role=role, parts=[types.Part(text=m["content"])]))
+        history.append({"role": m["role"], "content": m["content"]})
     return history
 
 
@@ -279,20 +277,21 @@ async def process_message(
     last_content = messages[-1]["content"]
 
     try:
-        client = genai.Client(api_key=s.gemini_api_key)
-        chat = client.aio.chats.create(
-            model="gemini-2.0-flash",
-            config=types.GenerateContentConfig(
-                system_instruction=system,
-                response_mime_type="application/json",
-                temperature=0.3,
-            ),
-            history=history,
+        client = AsyncGroq(api_key=s.groq_api_key)
+        msgs = (
+            [{"role": "system", "content": system}]
+            + history
+            + [{"role": "user", "content": last_content}]
         )
-        response = await chat.send_message(last_content)
-        raw = response.text
+        response = await client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=msgs,
+            response_format={"type": "json_object"},
+            temperature=0.3,
+        )
+        raw = response.choices[0].message.content
     except Exception as exc:
-        logger.error("Gemini API error: %s", exc)
+        logger.error("Groq API error: %s", exc)
         return (
             "I'm sorry, I had a technical issue. Could you please repeat what you said?",
             current_slots,
@@ -315,5 +314,5 @@ async def process_message(
         return reply, merged, intake_complete, reasoning
 
     except (json.JSONDecodeError, KeyError) as exc:
-        logger.warning("Failed to parse Gemini JSON (%s). Raw: %.200s", exc, raw)
+        logger.warning("Failed to parse Groq JSON (%s). Raw: %.200s", exc, raw)
         return raw, current_slots, False, ""

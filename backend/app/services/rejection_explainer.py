@@ -3,8 +3,7 @@ from __future__ import annotations
 import json
 import logging
 
-from google import genai
-from google.genai import types
+from groq import AsyncGroq
 
 from app.config import get_settings
 from app.services.rag import get_rag_context
@@ -65,16 +64,14 @@ async def explain_rejection(
     )
 
     try:
-        client = genai.Client(api_key=s.gemini_api_key)
-        response = await client.aio.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=[types.Part(text=prompt)],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.2,
-            ),
+        client = AsyncGroq(api_key=s.groq_api_key)
+        response = await client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.2,
         )
-        result = json.loads(response.text)
+        result = json.loads(response.choices[0].message.content)
         return {
             "reason_plain": result.get("reason_plain", ""),
             "action_plan": result.get("action_plan", ""),

@@ -1,12 +1,11 @@
-
 from __future__ import annotations
 
+import base64
 import json
 import logging
 from datetime import date
 
-from google import genai
-from google.genai import types
+from groq import AsyncGroq
 
 from app.config import get_settings
 
@@ -102,19 +101,21 @@ async def extract_document_fields(
     prompt = _EXTRACT_PROMPT.get(document_type, _EXTRACT_PROMPT["rc_book"])
 
     try:
-        client = genai.Client(api_key=s.gemini_api_key)
-        response = await client.aio.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=[
-                types.Part.from_bytes(data=image_bytes, mime_type=content_type),
-                types.Part(text=prompt),
-            ],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.1,
-            ),
+        client = AsyncGroq(api_key=s.groq_api_key)
+        b64 = base64.b64encode(image_bytes).decode()
+        response = await client.chat.completions.create(
+            model="llama-3.2-11b-vision-preview",
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:{content_type};base64,{b64}"}},
+                    {"type": "text", "text": prompt},
+                ],
+            }],
+            response_format={"type": "json_object"},
+            temperature=0.1,
         )
-        fields: dict = json.loads(response.text)
+        fields: dict = json.loads(response.choices[0].message.content)
     except Exception as exc:
         logger.error("Document extraction failed: %s", exc)
         return {}, "needs_review", None
