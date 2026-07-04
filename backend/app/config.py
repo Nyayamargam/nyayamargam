@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     supabase_service_role_key: str = ""
     vapid_public_key: str = ""
     vapid_private_key: str = ""
+    rescan_secret: str = ""
 
     allowed_origins: list[str] = [
         "http://localhost:5173",

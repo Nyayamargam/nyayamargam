@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { AlertCard } from '../components/AlertCard'
 import { DocumentReviewCard } from '../components/DocumentReviewCard'
 import { DocumentUpload } from '../components/DocumentUpload'
 import { MessageBubble } from '../components/MessageBubble'
-import { type CaseDetail, type DocumentRecord, api } from '../services/api'
+import { PushSubscriptionButton } from '../components/PushSubscriptionButton'
+import { type CaseAlert, type CaseDetail, type DocumentRecord, api } from '../services/api'
 
 const STATUS_LABEL: Record<string, string> = {
   intake: 'Intake in progress',
@@ -24,13 +26,29 @@ export function CaseWorkspace() {
   const navigate = useNavigate()
   const [caseData, setCaseData] = useState<CaseDetail | null>(null)
   const [documents, setDocuments] = useState<DocumentRecord[]>([])
+  const [alerts, setAlerts] = useState<CaseAlert[]>([])
+  const [closing, setClosing] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (!code) return
-    api.getCase(code).then(setCaseData).catch(() => setError('Could not load case. Please check the code.'))
+    api.getCase(code).then((c) => {
+      setCaseData(c)
+      setAlerts((c.alerts ?? []).filter((a) => !a.dismissed))
+    }).catch(() => setError('Could not load case. Please check the code.'))
     api.getDocuments(code).then(setDocuments).catch(() => {})
   }, [code])
+
+  async function handleClose() {
+    if (!code) return
+    setClosing(true)
+    try {
+      await api.closeCase(code)
+      setCaseData((prev) => prev ? { ...prev, status: 'closed' } : prev)
+    } finally {
+      setClosing(false)
+    }
+  }
 
   if (error) {
     return (
@@ -80,6 +98,25 @@ export function CaseWorkspace() {
       </header>
 
       <div className="max-w-lg mx-auto px-4 py-6 flex flex-col gap-6">
+        {/* Active alerts */}
+        {alerts.length > 0 && (
+          <section aria-label="Alerts">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Alerts
+            </h2>
+            <div className="flex flex-col gap-2">
+              {alerts.map((alert) => (
+                <AlertCard
+                  key={alert.id}
+                  alert={alert}
+                  caseCode={caseData?.code ?? ''}
+                  onDismissed={(id) => setAlerts((prev) => prev.filter((a) => a.id !== id))}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Case details summary */}
         {filledSlots.length > 0 && (
           <section aria-label="Case details">
@@ -138,6 +175,20 @@ export function CaseWorkspace() {
                 onUploaded={(rec) => setDocuments((prev) => [...prev, rec])}
               />
             </div>
+          </section>
+        )}
+
+        {/* Case Watch controls */}
+        {caseData.status !== 'intake' && caseData.status !== 'closed' && (
+          <section aria-label="Case Watch" className="flex flex-col gap-3">
+            <PushSubscriptionButton caseCode={caseData.code} />
+            <button
+              onClick={handleClose}
+              disabled={closing}
+              className="w-full text-sm text-gray-400 hover:text-gray-600 py-2 disabled:opacity-40"
+            >
+              {closing ? 'Closing…' : 'Mark as Resolved'}
+            </button>
           </section>
         )}
       </div>

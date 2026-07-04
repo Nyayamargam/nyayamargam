@@ -32,6 +32,15 @@ export interface CaseMessage {
   timestamp: string
 }
 
+export interface CaseAlert {
+  id: string
+  type: 'document_expired' | 'document_expiring_soon' | 'action_required'
+  message: string
+  document_id?: string
+  created_at: string
+  dismissed: boolean
+}
+
 export interface CaseDetail {
   code: string
   domain: string | null
@@ -39,6 +48,9 @@ export interface CaseDetail {
   language: string
   slots: Record<string, unknown>
   messages: CaseMessage[]
+  alerts: CaseAlert[]
+  push_subscription: unknown | null
+  last_rescanned_at: string | null
   created_at: string
   updated_at: string
 }
@@ -85,5 +97,24 @@ export const api = {
     fetch(`${BASE}/case/${code}/documents`).then((r) => {
       if (!r.ok) throw new Error(`API ${r.status}`)
       return r.json()
+    }),
+
+  closeCase: (code: string): Promise<void> =>
+    fetch(`${BASE}/case/${code}/close`, { method: 'POST' }).then((r) => {
+      if (!r.ok) throw new Error(`API ${r.status}`)
+    }),
+
+  dismissAlert: (code: string, alertId: string): Promise<void> =>
+    fetch(`${BASE}/case/${code}/alerts/${alertId}/dismiss`, { method: 'POST' }).then((r) => {
+      if (!r.ok) throw new Error(`API ${r.status}`)
+    }),
+
+  savePushSubscription: (code: string, subscription: PushSubscriptionJSON): Promise<void> =>
+    fetch(`${BASE}/case/${code}/push-subscription`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(subscription),
+    }).then((r) => {
+      if (!r.ok) throw new Error(`API ${r.status}`)
     }),
 }

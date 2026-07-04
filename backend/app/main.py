@@ -5,6 +5,7 @@ from app.config import get_settings
 from app.routes.cases import router as cases_router
 from app.routes.documents import router as documents_router
 from app.routes.speech import router as speech_router
+from app.routes.watch import router as watch_router
 
 app = FastAPI(title="NavyaSathi API", version="0.1.0", docs_url="/docs")
 
@@ -20,6 +21,7 @@ app.add_middleware(
 app.include_router(cases_router)
 app.include_router(documents_router)
 app.include_router(speech_router)
+app.include_router(watch_router)
 
 
 @app.get("/health", tags=["ops"])

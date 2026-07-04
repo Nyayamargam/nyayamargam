@@ -1,0 +1,17 @@
+name: Case Watch — Daily Rescan
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 02:00 UTC = 07:30 IST
+  workflow_dispatch:        # allow manual trigger from GitHub UI
+
+jobs:
+  rescan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger rescan
+        run: |
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.RESCAN_SECRET }}" \
+            "${{ secrets.NAVYASATHI_API_URL }}/internal/rescan"
