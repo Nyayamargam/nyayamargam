@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { DocumentReviewCard } from '../components/DocumentReviewCard'
+import { DocumentUpload } from '../components/DocumentUpload'
 import { MessageBubble } from '../components/MessageBubble'
-import { type CaseDetail, api } from '../services/api'
+import { type CaseDetail, type DocumentRecord, api } from '../services/api'
 
 const STATUS_LABEL: Record<string, string> = {
   intake: 'Intake in progress',
@@ -21,14 +23,13 @@ export function CaseWorkspace() {
   const { code } = useParams<{ code: string }>()
   const navigate = useNavigate()
   const [caseData, setCaseData] = useState<CaseDetail | null>(null)
+  const [documents, setDocuments] = useState<DocumentRecord[]>([])
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (!code) return
-    api
-      .getCase(code)
-      .then(setCaseData)
-      .catch(() => setError('Could not load case. Please check the code.'))
+    api.getCase(code).then(setCaseData).catch(() => setError('Could not load case. Please check the code.'))
+    api.getDocuments(code).then(setDocuments).catch(() => {})
   }, [code])
 
   if (error) {
@@ -122,12 +123,22 @@ export function CaseWorkspace() {
           </button>
         )}
 
-        {/* Phase 2 placeholder — document upload */}
+        {/* Document upload — shown once intake is complete */}
         {caseData.status === 'pending_docs' && (
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-sm text-blue-700">
-            <p className="font-medium mb-1">Documents needed</p>
-            <p>Document upload will be available in the next update (Phase 2).</p>
-          </div>
+          <section aria-label="Documents">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Documents
+            </h2>
+            <div className="flex flex-col gap-3">
+              {documents.map((doc) => (
+                <DocumentReviewCard key={doc.id} record={doc} />
+              ))}
+              <DocumentUpload
+                caseCode={caseData.code}
+                onUploaded={(rec) => setDocuments((prev) => [...prev, rec])}
+              />
+            </div>
+          </section>
         )}
       </div>
     </div>

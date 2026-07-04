@@ -1,5 +1,16 @@
 const BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
+export type ValidityStatus = 'pending' | 'valid' | 'expired' | 'invalid' | 'needs_review'
+
+export interface DocumentRecord {
+  id: string
+  document_type: string
+  extracted_fields: Record<string, string | number | null>
+  validity_status: ValidityStatus
+  expiry_date: string | null
+  uploaded_at: string
+}
+
 export interface CreateCaseResponse {
   code: string
   status: string
@@ -52,6 +63,24 @@ export const api = {
 
   getCase: (code: string): Promise<CaseDetail> =>
     fetch(`${BASE}/case/${code}`).then((r) => {
+      if (!r.ok) throw new Error(`API ${r.status}`)
+      return r.json()
+    }),
+
+  uploadDocument: async (code: string, file: Blob, documentType: string): Promise<DocumentRecord> => {
+    const form = new FormData()
+    form.append('file', file, 'document.jpg')
+    form.append('document_type', documentType)
+    const res = await fetch(`${BASE}/case/${code}/document`, { method: 'POST', body: form })
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new Error(`Upload ${res.status}: ${text}`)
+    }
+    return res.json()
+  },
+
+  getDocuments: (code: string): Promise<DocumentRecord[]> =>
+    fetch(`${BASE}/case/${code}/documents`).then((r) => {
       if (!r.ok) throw new Error(`API ${r.status}`)
       return r.json()
     }),
