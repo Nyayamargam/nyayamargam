@@ -7,7 +7,7 @@ from app.config import get_settings
 
 router = APIRouter(prefix="/speech", tags=["speech"])
 
-SARVAM_STT_URL = "https://api.sarvam.ai/v1/speech-to-text"
+SARVAM_STT_URL = "https://api.sarvam.ai/speech-to-text"
 
 
 @router.post("/stt")

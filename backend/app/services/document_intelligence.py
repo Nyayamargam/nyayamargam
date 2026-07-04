@@ -104,7 +104,7 @@ async def extract_document_fields(
         client = AsyncGroq(api_key=s.groq_api_key)
         b64 = base64.b64encode(image_bytes).decode()
         response = await client.chat.completions.create(
-            model="llama-3.2-11b-vision-preview",
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[{
                 "role": "user",
                 "content": [
