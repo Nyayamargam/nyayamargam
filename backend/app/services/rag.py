@@ -23,9 +23,12 @@ async def _embed(text: str, task_type: str = "RETRIEVAL_QUERY") -> list[float]:
     try:
         client = genai.Client(api_key=s.gemini_api_key)
         response = await client.aio.models.embed_content(
-            model="text-embedding-004",
+            model="gemini-embedding-001",
             contents=text,
-            config=types.EmbedContentConfig(task_type=task_type),
+            config=types.EmbedContentConfig(
+                task_type=task_type,
+                output_dimensionality=768,
+            ),
         )
         return list(response.embeddings[0].values)
     except Exception as exc:
