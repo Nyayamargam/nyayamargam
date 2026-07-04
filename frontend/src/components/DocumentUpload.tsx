@@ -1,14 +1,6 @@
 import { useRef, useState } from 'react'
+import { getT } from '../i18n'
 import { type DocumentRecord, api } from '../services/api'
-
-const DOC_TYPE_LABELS: Record<string, string> = {
-  insurance: 'Insurance Certificate',
-  dl: 'Driving Licence',
-  rc_book: 'RC Book',
-  puc: 'PUC Certificate',
-  challan_receipt: 'Challan Receipt',
-  rejection_slip: 'Rejection Slip / Letter',
-}
 
 async function compressImage(file: File): Promise<Blob> {
   const MAX_PX = 1600
@@ -36,10 +28,12 @@ async function compressImage(file: File): Promise<Blob> {
 
 interface Props {
   caseCode: string
+  lang?: string
   onUploaded: (record: DocumentRecord) => void
 }
 
-export function DocumentUpload({ caseCode, onUploaded }: Props) {
+export function DocumentUpload({ caseCode, lang, onUploaded }: Props) {
+  const t = getT(lang)
   const [docType, setDocType] = useState('insurance')
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -71,7 +65,7 @@ export function DocumentUpload({ caseCode, onUploaded }: Props) {
       onUploaded(record)
       clearFile()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed. Please try again.')
+      setError(e instanceof Error ? e.message : t.draftError)
     } finally {
       setUploading(false)
     }
@@ -79,16 +73,19 @@ export function DocumentUpload({ caseCode, onUploaded }: Props) {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-col gap-4">
-      <h3 className="font-semibold text-gray-800 text-sm">Upload a Document</h3>
+      <h3 className="font-semibold text-gray-800 text-sm">{t.uploadTitle}</h3>
 
       <div>
-        <label className="text-xs font-medium text-gray-500 mb-1 block">Document type</label>
+        <label htmlFor="doc-type-select" className="text-xs font-medium text-gray-500 mb-1 block">
+          {t.docTypeLabel}
+        </label>
         <select
+          id="doc-type-select"
           value={docType}
           onChange={(e) => setDocType(e.target.value)}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand min-h-[44px]"
         >
-          {Object.entries(DOC_TYPE_LABELS).map(([v, l]) => (
+          {Object.entries(t.docTypes).map(([v, l]) => (
             <option key={v} value={v}>{l}</option>
           ))}
         </select>
@@ -99,8 +96,8 @@ export function DocumentUpload({ caseCode, onUploaded }: Props) {
           <img src={preview} alt="Selected document" className="w-full rounded-xl object-cover max-h-48" />
           <button
             onClick={clearFile}
-            aria-label="Remove image"
-            className="absolute top-2 right-2 bg-black/50 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs hover:bg-black/70"
+            aria-label={lang === 'hi' ? 'छवि हटाएं' : lang === 'te' ? 'చిత్రాన్ని తొలగించండి' : 'Remove image'}
+            className="absolute top-2 right-2 bg-black/50 text-white rounded-full w-11 h-11 flex items-center justify-center text-xs hover:bg-black/70"
           >
             ✕
           </button>
@@ -108,9 +105,9 @@ export function DocumentUpload({ caseCode, onUploaded }: Props) {
       ) : (
         <button
           onClick={() => inputRef.current?.click()}
-          className="border-2 border-dashed border-gray-200 rounded-xl py-8 text-sm text-gray-400 hover:border-brand hover:text-brand transition-colors"
+          className="border-2 border-dashed border-gray-200 rounded-xl py-8 text-sm text-gray-400 hover:border-brand hover:text-brand transition-colors min-h-[80px]"
         >
-          Tap to select an image
+          {t.tapToSelect}
         </button>
       )}
 
@@ -119,6 +116,7 @@ export function DocumentUpload({ caseCode, onUploaded }: Props) {
         type="file"
         accept="image/*"
         className="hidden"
+        aria-hidden="true"
         onChange={(e) => {
           const f = e.target.files?.[0]
           if (f) pickFile(f)
@@ -130,9 +128,9 @@ export function DocumentUpload({ caseCode, onUploaded }: Props) {
       <button
         onClick={handleUpload}
         disabled={!file || uploading}
-        className="w-full bg-brand text-white font-semibold rounded-xl py-3 text-sm hover:bg-brand-dark transition-colors disabled:opacity-40"
+        className="w-full bg-brand text-white font-semibold rounded-xl py-3 text-sm hover:bg-brand-dark transition-colors disabled:opacity-40 min-h-[52px]"
       >
-        {uploading ? 'Analysing…' : 'Upload & Analyse'}
+        {uploading ? t.btnUploading : t.btnUpload}
       </button>
     </div>
   )

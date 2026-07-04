@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { getT } from '../i18n'
 import { type CaseAlert, api } from '../services/api'
 
 interface Props {
   alert: CaseAlert
   caseCode: string
+  lang?: string
   onDismissed: (alertId: string) => void
 }
 
@@ -19,8 +21,9 @@ const ALERT_TEXT: Record<string, string> = {
   action_required: 'text-yellow-800',
 }
 
-export function AlertCard({ alert, caseCode, onDismissed }: Props) {
+export function AlertCard({ alert, caseCode, lang, onDismissed }: Props) {
   const [dismissing, setDismissing] = useState(false)
+  const t = getT(lang)
 
   async function handleDismiss() {
     setDismissing(true)
@@ -43,8 +46,8 @@ export function AlertCard({ alert, caseCode, onDismissed }: Props) {
       <button
         onClick={handleDismiss}
         disabled={dismissing}
-        aria-label="Dismiss alert"
-        className="text-gray-400 hover:text-gray-600 text-sm shrink-0 disabled:opacity-40"
+        aria-label={t.dismissAriaLabel}
+        className="text-gray-400 hover:text-gray-600 shrink-0 disabled:opacity-40 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-black/5 transition-colors"
       >
         ✕
       </button>

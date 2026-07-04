@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { getT } from '../i18n'
 import { api } from '../services/api'
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined
@@ -17,11 +18,13 @@ type State = 'loading' | 'unsupported' | 'denied' | 'subscribed' | 'idle'
 
 interface Props {
   caseCode: string
+  lang?: string
 }
 
-export function PushSubscriptionButton({ caseCode }: Props) {
+export function PushSubscriptionButton({ caseCode, lang }: Props) {
   const [state, setState] = useState<State>('loading')
   const [busy, setBusy] = useState(false)
+  const t = getT(lang)
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !VAPID_PUBLIC_KEY) {
@@ -65,16 +68,12 @@ export function PushSubscriptionButton({ caseCode }: Props) {
   if (state === 'loading' || state === 'unsupported') return null
   if (state === 'denied') {
     return (
-      <p className="text-xs text-gray-400 text-center">
-        Notifications blocked in browser settings.
-      </p>
+      <p className="text-xs text-gray-400 text-center">{t.notifBlocked}</p>
     )
   }
   if (state === 'subscribed') {
     return (
-      <p className="text-xs text-green-600 text-center">
-        Notifications enabled for this case.
-      </p>
+      <p className="text-xs text-green-600 text-center">{t.notifEnabled}</p>
     )
   }
 
@@ -82,9 +81,9 @@ export function PushSubscriptionButton({ caseCode }: Props) {
     <button
       onClick={subscribe}
       disabled={busy}
-      className="w-full border border-brand text-brand text-sm font-medium rounded-xl py-2.5 hover:bg-brand/5 transition-colors disabled:opacity-40"
+      className="w-full border border-brand text-brand text-sm font-medium rounded-xl py-2.5 hover:bg-brand/5 transition-colors disabled:opacity-40 min-h-[44px]"
     >
-      {busy ? 'Enabling…' : 'Enable Notifications'}
+      {busy ? t.notifEnabling : t.notifEnable}
     </button>
   )
 }

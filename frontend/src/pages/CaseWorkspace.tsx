@@ -7,14 +7,8 @@ import { DraftDownloadButton } from '../components/DraftDownloadButton'
 import { MessageBubble } from '../components/MessageBubble'
 import { PushSubscriptionButton } from '../components/PushSubscriptionButton'
 import { RejectionExplainerCard } from '../components/RejectionExplainerCard'
+import { getT, setHtmlLang, type Lang } from '../i18n'
 import { type CaseAlert, type CaseDetail, type DocumentRecord, api } from '../services/api'
-
-const STATUS_LABEL: Record<string, string> = {
-  intake: 'Intake in progress',
-  pending_docs: 'Awaiting documents',
-  ready: 'Ready for action',
-  closed: 'Closed',
-}
 
 const STATUS_COLOR: Record<string, string> = {
   intake: 'bg-yellow-100 text-yellow-800',
@@ -32,14 +26,18 @@ export function CaseWorkspace() {
   const [closing, setClosing] = useState(false)
   const [error, setError] = useState('')
 
+  const lang = caseData?.language ?? localStorage.getItem('navyasathi_lang') ?? 'en'
+  const t = getT(lang)
+
   useEffect(() => {
     if (!code) return
     api.getCase(code).then((c) => {
       setCaseData(c)
       setAlerts((c.alerts ?? []).filter((a) => !a.dismissed))
-    }).catch(() => setError('Could not load case. Please check the code.'))
+      setHtmlLang((c.language || 'en') as Lang)
+    }).catch(() => setError(t.errorLoadCase))
     api.getDocuments(code).then(setDocuments).catch(() => {})
-  }, [code])
+  }, [code]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleClose() {
     if (!code) return
@@ -55,9 +53,12 @@ export function CaseWorkspace() {
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4">
-        <p className="text-red-500 mb-4">{error}</p>
-        <button onClick={() => navigate('/')} className="text-brand underline">
-          Go home
+        <p className="text-red-500 mb-4" role="alert">{error}</p>
+        <button
+          onClick={() => navigate('/')}
+          className="text-brand underline min-h-[44px]"
+        >
+          {t.goHome}
         </button>
       </div>
     )
@@ -66,7 +67,7 @@ export function CaseWorkspace() {
   if (!caseData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-400 animate-pulse">Loading…</p>
+        <p className="text-gray-400 animate-pulse" aria-live="polite">{t.loading}</p>
       </div>
     )
   }
@@ -77,41 +78,45 @@ export function CaseWorkspace() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <header className="bg-brand text-white px-4 py-4 shadow">
         <button
           onClick={() => navigate('/')}
-          aria-label="Back to home"
-          className="text-white/70 hover:text-white text-sm mb-1"
+          aria-label={lang === 'hi' ? 'होम पर वापस' : lang === 'te' ? 'హోమ్‌కు తిరిగి' : 'Back to home'}
+          className="text-white/70 hover:text-white text-sm mb-1 min-h-[44px] flex items-center"
         >
-          ← Home
+          ← {lang === 'hi' ? 'होम' : lang === 'te' ? 'హోమ్' : 'Home'}
         </button>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-xl font-bold">Case Workspace</h1>
-            <p className="text-blue-200 text-xs font-mono tracking-widest mt-0.5">#{caseData.code}</p>
+            <h1 className="text-xl font-bold">
+              {lang === 'hi' ? 'केस वर्कस्पेस' : lang === 'te' ? 'కేసు వర్క్‌స్పేస్' : 'Case Workspace'}
+            </h1>
+            <p className="text-blue-200 text-xs font-mono tracking-widest mt-0.5">
+              <span className="sr-only">Case code: </span>#{caseData.code}
+            </p>
           </div>
           <span
             className={`text-xs font-medium px-3 py-1 rounded-full ${STATUS_COLOR[caseData.status] ?? 'bg-gray-100 text-gray-600'}`}
           >
-            {STATUS_LABEL[caseData.status] ?? caseData.status}
+            {t.statusLabel[caseData.status] ?? caseData.status}
           </span>
         </div>
       </header>
 
       <div className="max-w-lg mx-auto px-4 py-6 flex flex-col gap-6">
-        {/* Active alerts */}
+
         {alerts.length > 0 && (
-          <section aria-label="Alerts">
+          <section aria-label={t.sectionAlerts}>
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Alerts
+              {t.sectionAlerts}
             </h2>
             <div className="flex flex-col gap-2">
               {alerts.map((alert) => (
                 <AlertCard
                   key={alert.id}
                   alert={alert}
-                  caseCode={caseData?.code ?? ''}
+                  caseCode={caseData.code}
+                  lang={lang}
                   onDismissed={(id) => setAlerts((prev) => prev.filter((a) => a.id !== id))}
                 />
               ))}
@@ -119,11 +124,10 @@ export function CaseWorkspace() {
           </section>
         )}
 
-        {/* Case details summary */}
         {filledSlots.length > 0 && (
-          <section aria-label="Case details">
+          <section aria-label={t.sectionRecorded}>
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              What we recorded
+              {t.sectionRecorded}
             </h2>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50">
               {filledSlots.map(([key, value]) => (
@@ -140,62 +144,59 @@ export function CaseWorkspace() {
           </section>
         )}
 
-        {/* Conversation history */}
-        <section aria-label="Conversation history">
+        <section aria-label={t.sectionConversation}>
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            Conversation
+            {t.sectionConversation}
           </h2>
-          <div className="flex flex-col">
+          <div className="flex flex-col" aria-live="polite">
             {caseData.messages.map((m, i) => (
               <MessageBubble key={i} role={m.role} content={m.content} />
             ))}
           </div>
         </section>
 
-        {/* Continue intake if still active */}
         {caseData.status === 'intake' && (
           <button
             onClick={() => navigate(`/intake/${caseData.code}`)}
-            className="w-full bg-brand text-white font-semibold rounded-xl py-3 hover:bg-brand-dark transition-colors"
+            className="w-full bg-brand text-white font-semibold rounded-xl py-3 hover:bg-brand-dark transition-colors min-h-[52px]"
           >
-            Continue Intake
+            {t.btnContinueIntake}
           </button>
         )}
 
-        {/* Document upload — shown once intake is complete */}
         {(caseData.status === 'pending_docs' || caseData.status === 'ready') && (
-          <section aria-label="Documents">
+          <section aria-label={t.sectionDocuments}>
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Documents
+              {t.sectionDocuments}
             </h2>
             <div className="flex flex-col gap-3">
               {documents.map((doc) => (
                 <div key={doc.id} className="flex flex-col gap-2">
-                  <DocumentReviewCard record={doc} />
+                  <DocumentReviewCard record={doc} lang={lang} />
                   {doc.document_type === 'rejection_slip' && doc.rejection_explanation && (
-                    <RejectionExplainerCard explanation={doc.rejection_explanation} />
+                    <RejectionExplainerCard explanation={doc.rejection_explanation} lang={lang} />
                   )}
                 </div>
               ))}
               <DocumentUpload
                 caseCode={caseData.code}
+                lang={lang}
                 onUploaded={(rec) => setDocuments((prev) => [...prev, rec])}
               />
             </div>
           </section>
         )}
 
-        {/* Case Watch controls */}
         {caseData.status !== 'intake' && caseData.status !== 'closed' && (
-          <section aria-label="Case Watch" className="flex flex-col gap-3">
-            <DraftDownloadButton caseCode={caseData.code} />
-            <PushSubscriptionButton caseCode={caseData.code} />
+          <section aria-label={t.sectionCaseWatch} className="flex flex-col gap-3">
+            <DraftDownloadButton caseCode={caseData.code} lang={lang} />
+            <PushSubscriptionButton caseCode={caseData.code} lang={lang} />
             <button
               onClick={handleClose}
               disabled={closing}
-              className="w-full text-sm text-gray-400 hover:text-gray-600 py-2 disabled:opacity-40"
+              className="w-full text-sm text-gray-400 hover:text-gray-600 py-2 disabled:opacity-40 min-h-[44px]"
             >
-              {closing ? 'Closing…' : 'Mark as Resolved'}
+              {closing ? t.btnClosing : t.btnMarkResolved}
             </button>
           </section>
         )}

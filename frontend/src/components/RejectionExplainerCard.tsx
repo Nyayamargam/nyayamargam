@@ -1,10 +1,14 @@
+import { getT } from '../i18n'
 import type { RejectionExplanation } from '../services/api'
 
 interface Props {
   explanation: RejectionExplanation
+  lang?: string
 }
 
-export function RejectionExplainerCard({ explanation }: Props) {
+export function RejectionExplainerCard({ explanation, lang }: Props) {
+  const t = getT(lang)
+
   const steps = explanation.action_plan
     .split('\n')
     .map((s) => s.trim())
@@ -13,21 +17,21 @@ export function RejectionExplainerCard({ explanation }: Props) {
   return (
     <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <span className="text-base">📋</span>
-        <h3 className="font-semibold text-orange-900 text-sm">Why was it rejected?</h3>
+        <span className="text-base" aria-hidden="true">📋</span>
+        <h3 className="font-semibold text-orange-900 text-sm">{t.rejectionTitle}</h3>
       </div>
 
       <p className="text-sm text-orange-800 leading-relaxed">{explanation.reason_plain}</p>
 
       {explanation.relevant_section && (
         <p className="text-xs text-orange-600 font-medium">
-          Rule / Section: {explanation.relevant_section}
+          {t.rejectionRuleSection} {explanation.relevant_section}
         </p>
       )}
 
       <div>
         <p className="text-xs font-semibold text-orange-900 uppercase tracking-wide mb-2">
-          What to do next
+          {t.rejectionNextSteps}
         </p>
         <ol className="flex flex-col gap-1.5">
           {steps.map((step, i) => (

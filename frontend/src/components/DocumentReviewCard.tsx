@@ -1,12 +1,5 @@
+import { getT } from '../i18n'
 import { type DocumentRecord } from '../services/api'
-
-const DOC_TYPE_LABELS: Record<string, string> = {
-  rc_book: 'RC Book',
-  insurance: 'Insurance Certificate',
-  dl: 'Driving Licence',
-  puc: 'PUC Certificate',
-  challan_receipt: 'Challan Receipt',
-}
 
 const FIELD_LABELS: Record<string, string> = {
   vehicle_reg_number: 'Vehicle Reg.',
@@ -38,15 +31,12 @@ const FIELD_LABELS: Record<string, string> = {
   offence_section: 'Section',
   fine_amount: 'Fine Amount',
   court_date: 'Court Date',
-}
-
-const REMEDIATION: Record<string, string> = {
-  insurance:
-    'Insurance is mandatory under the Motor Vehicles Act. Renew your policy immediately — contact your insurer or use their app/website.',
-  dl: 'An expired licence is an offence under MV Act Section 3. Visit your nearest RTO with Form 9, your old licence, and supporting documents to renew.',
-  puc: 'A valid PUC certificate is required under MV Act Section 190. Visit any authorised PUC testing centre — renewal usually takes about 15 minutes.',
-  rc_book:
-    'Your vehicle registration has expired. Visit your nearest RTO to renew the registration before driving.',
+  rejection_date: 'Rejection Date',
+  applicant_name: 'Applicant',
+  application_number: 'Application No.',
+  scheme_or_service: 'Scheme / Service',
+  rejection_reason: 'Rejection Reason',
+  section_cited: 'Section Cited',
 }
 
 const VALIDITY_STYLE: Record<string, string> = {
@@ -57,19 +47,29 @@ const VALIDITY_STYLE: Record<string, string> = {
   invalid: 'bg-red-100 text-red-800',
 }
 
-const VALIDITY_LABEL: Record<string, string> = {
-  valid: 'Valid',
-  expired: 'Expired',
-  needs_review: 'Needs Review',
-  pending: 'Pending',
-  invalid: 'Invalid',
-}
-
 interface Props {
   record: DocumentRecord
+  lang?: string
 }
 
-export function DocumentReviewCard({ record }: Props) {
+export function DocumentReviewCard({ record, lang }: Props) {
+  const t = getT(lang)
+
+  const validityLabel: Record<string, string> = {
+    valid: t.validityValid,
+    expired: t.validityExpired,
+    needs_review: t.validityNeedsReview,
+    pending: t.validityPending,
+    invalid: t.validityInvalid,
+  }
+
+  const remediation: Record<string, string> = {
+    insurance: t.remediationInsurance,
+    dl: t.remediationDl,
+    puc: t.remediationPuc,
+    rc_book: t.remediationRcBook,
+  }
+
   const visibleFields = Object.entries(record.extracted_fields).filter(
     ([k, v]) => k !== 'confidence' && v !== null && v !== '',
   )
@@ -78,25 +78,25 @@ export function DocumentReviewCard({ record }: Props) {
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
         <span className="font-medium text-gray-800 text-sm">
-          {DOC_TYPE_LABELS[record.document_type] ?? record.document_type}
+          {t.docTypes[record.document_type] ?? record.document_type}
         </span>
         <span
           className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${VALIDITY_STYLE[record.validity_status] ?? 'bg-gray-100 text-gray-600'}`}
         >
-          {VALIDITY_LABEL[record.validity_status] ?? record.validity_status}
+          {validityLabel[record.validity_status] ?? record.validity_status}
         </span>
       </div>
 
       {record.validity_status === 'expired' && (
-        <div className="mx-4 mt-3 bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-700">
-          <p className="font-semibold mb-0.5">Action required</p>
-          <p>{REMEDIATION[record.document_type] ?? 'This document has expired. Please renew it.'}</p>
+        <div className="mx-4 mt-3 bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-700" role="alert">
+          <p className="font-semibold mb-0.5">{t.actionRequired}</p>
+          <p>{remediation[record.document_type] ?? t.remediationRcBook}</p>
         </div>
       )}
 
       {record.validity_status === 'needs_review' && (
         <div className="mx-4 mt-3 bg-yellow-50 border border-yellow-100 rounded-xl p-3 text-xs text-yellow-800">
-          Some fields could not be read clearly. Please verify the details below.
+          {t.needsReviewMsg}
         </div>
       )}
 
@@ -114,7 +114,7 @@ export function DocumentReviewCard({ record }: Props) {
           ))}
         </div>
       ) : (
-        <p className="px-4 py-3 text-xs text-gray-400">No fields could be extracted from this image.</p>
+        <p className="px-4 py-3 text-xs text-gray-400">{t.noFields}</p>
       )}
     </div>
   )
