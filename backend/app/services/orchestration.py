@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 import logging
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from app.config import get_settings
 from app.services.knowledge import get_vehicle_traffic_context
@@ -88,16 +89,14 @@ OPENING_MESSAGES = {
 }
 
 
-def _build_gemini_history(messages: list[dict]) -> list[dict]:
-    """Convert internal message dicts to Gemini's {role, parts} format.
-    Gemini uses 'model' instead of 'assistant', and history must alternate user/model.
-    """
+def _build_history(messages: list[dict]) -> list[types.Content]:
+    """Convert internal message dicts to google.genai Content objects."""
     history = []
     for m in messages:
         if m["role"] not in ("user", "assistant"):
             continue
         role = "model" if m["role"] == "assistant" else "user"
-        history.append({"role": role, "parts": [{"text": m["content"]}]})
+        history.append(types.Content(role=role, parts=[types.Part(text=m["content"])]))
     return history
 
 
@@ -117,27 +116,25 @@ async def process_message(
         knowledge_context=knowledge_context,
     )
 
-    # Split history (all but last user message) from the new message
-    history = _build_gemini_history(messages[:-1])
+    history = _build_history(messages[:-1])
     last_content = messages[-1]["content"]
 
     try:
-        genai.configure(api_key=s.gemini_api_key)
-        model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",
-            system_instruction=system,
-            generation_config=genai.GenerationConfig(
+        client = genai.Client(api_key=s.gemini_api_key)
+        chat = client.aio.chats.create(
+            model="gemini-2.0-flash",
+            config=types.GenerateContentConfig(
+                system_instruction=system,
                 response_mime_type="application/json",
                 temperature=0.3,
             ),
+            history=history,
         )
-        chat = model.start_chat(history=history)
-        response = await chat.send_message_async(last_content)
+        response = await chat.send_message(last_content)
         raw = response.text
     except Exception as exc:
         logger.error("Gemini API error: %s", exc)
-        fallback = "I'm sorry, I had a technical issue. Could you please repeat what you said?"
-        return fallback, current_slots, False
+        return "I'm sorry, I had a technical issue. Could you please repeat what you said?", current_slots, False
 
     try:
         parsed = json.loads(raw)
