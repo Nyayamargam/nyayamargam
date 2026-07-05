@@ -16,16 +16,24 @@ export async function transcribeAudio(
   form.append('audio', blob, 'recording.webm')
   form.append('language', language)
 
-  const res = await fetch(`${BASE}/speech/stt`, {
+  const url = `${BASE}/speech/stt`
+  console.log('[STT] POST', url, '| blob size:', blob.size, '| type:', blob.type, '| language:', language)
+
+  const res = await fetch(url, {
     method: 'POST',
     body: form,
     // No Content-Type header — browser sets multipart boundary automatically
   })
+
+  console.log('[STT] response status:', res.status)
   if (!res.ok) {
     const text = await res.text().catch(() => '')
+    console.error('[STT] error body:', text)
     throw new Error(`STT ${res.status}: ${text}`)
   }
-  return res.json()
+  const data = await res.json()
+  console.log('[STT] success response:', data)
+  return data
 }
 
 // TTS stub — Phase 7 wires Sarvam TTS and plays audio

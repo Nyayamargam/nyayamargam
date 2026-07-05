@@ -22,29 +22,38 @@ export function VoiceInput({ language, onConfirm, disabled = false }: VoiceInput
   const t = getT(lang)
 
   async function startRecording() {
+    console.log('[Voice] startRecording called')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      console.log('[Voice] microphone stream acquired')
       chunksRef.current = []
 
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
         : 'audio/mp4'
+      console.log('[Voice] mimeType selected:', mimeType)
 
       const mr = new MediaRecorder(stream, { mimeType })
       mr.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data)
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data)
+          console.log('[Voice] chunk received, size:', e.data.size, 'total chunks:', chunksRef.current.length)
+        }
       }
       mr.onstop = handleStop
       mediaRef.current = mr
       mr.start(250)
       setPhase('recording')
-    } catch {
+      console.log('[Voice] MediaRecorder started')
+    } catch (err) {
+      console.error('[Voice] startRecording failed:', err)
       setErrorMsg(t.voiceDenied)
       setPhase('error')
     }
   }
 
   function stopRecording() {
+    console.log('[Voice] stopRecording called, chunks so far:', chunksRef.current.length)
     mediaRef.current?.stop()
     mediaRef.current?.stream.getTracks().forEach((track) => track.stop())
     setPhase('transcribing')
@@ -53,11 +62,15 @@ export function VoiceInput({ language, onConfirm, disabled = false }: VoiceInput
   async function handleStop() {
     const mimeType = chunksRef.current[0]?.type || 'audio/webm'
     const blob = new Blob(chunksRef.current, { type: mimeType })
+    console.log('[Voice] handleStop — blob size:', blob.size, 'type:', blob.type, 'chunks:', chunksRef.current.length)
     try {
+      console.log('[Voice] calling transcribeAudio, language:', language)
       const result = await transcribeAudio(blob, language)
+      console.log('[Voice] transcribeAudio result:', result)
       setTranscript(result.transcript)
       setPhase('confirming')
-    } catch {
+    } catch (err) {
+      console.error('[Voice] transcribeAudio threw:', err)
       setErrorMsg(t.voiceError)
       setPhase('error')
     }
