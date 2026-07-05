@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getLang, getT, setHtmlLang, type Lang } from '../i18n'
 import { type RouterDispatch, api } from '../services/api'
+import { type SarvamLanguage } from '../services/sarvam'
+import VoiceProblemInput from '../components/VoiceProblemInput'
 
 type Domain = 'vehicle_traffic' | 'pension_welfare' | 'utility_consumer'
 
@@ -176,8 +178,6 @@ export function Home() {
   const [domain, setDomain] = useState<Domain>(
     (localStorage.getItem('navyasathi_domain') as Domain) || 'vehicle_traffic',
   )
-  const [problem, setProblem] = useState('')
-  const [finding, setFinding] = useState(false)
   const [routeResult, setRouteResult] = useState<RouterDispatch | null>(null)
   const [resumeCode, setResumeCode] = useState('')
   const [starting, setStarting] = useState(false)
@@ -186,6 +186,12 @@ export function Home() {
   const t = COPY[lang]
   const gt = getT(lang)
 
+  const LANG_TO_SARVAM: Record<Lang, SarvamLanguage> = {
+    en: 'en-IN',
+    hi: 'hi-IN',
+    te: 'te-IN',
+  }
+
   function selectLang(l: Lang) {
     setLangState(l)
     localStorage.setItem('navyasathi_lang', l)
@@ -193,31 +199,26 @@ export function Home() {
     setRouteResult(null)
   }
 
+  async function handleRouted(result: RouterDispatch) {
+    if (result.action === 'START_INTAKE' && result.domain) {
+      setStarting(true)
+      try {
+        const res = await api.createCase(lang, result.domain)
+        navigate(`/intake/${res.code}`)
+      } finally {
+        setStarting(false)
+      }
+      return
+    }
+    setRouteResult(result)
+  }
+
   function selectDomain(d: Domain) {
     setDomain(d)
     localStorage.setItem('navyasathi_domain', d)
   }
 
-  async function findHelp() {
-    if (!problem.trim()) return
-    setFinding(true)
-    setRouteResult(null)
-    try {
-      const result = await api.classifyProblem(problem.trim(), lang)
-      if (result.action === 'START_INTAKE' && result.domain) {
-        // GREEN — create case immediately and navigate
-        const res = await api.createCase(lang, result.domain)
-        navigate(`/intake/${res.code}`)
-        return
-      }
-      setRouteResult(result)
-    } finally {
-      setFinding(false)
-    }
-  }
-
   async function startAmberCase() {
-    // Amber: create a best-effort case in the closest domain, or vehicle_traffic as fallback
     const d = (routeResult?.domain as Domain) || 'vehicle_traffic'
     setStarting(true)
     try {
@@ -275,25 +276,11 @@ export function Home() {
 
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 flex flex-col gap-5">
 
-        {/* Primary path — free-text router */}
-        <div className="flex flex-col gap-2">
-          <textarea
-            rows={3}
-            value={problem}
-            onChange={(e) => { setProblem(e.target.value); setRouteResult(null) }}
-            placeholder={t.problemPlaceholder}
-            className="w-full resize-none border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-            aria-label={t.problemPlaceholder}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); findHelp() } }}
-          />
-          <button
-            onClick={findHelp}
-            disabled={finding || !problem.trim()}
-            className="w-full bg-brand text-white font-semibold rounded-xl py-3 text-base hover:bg-brand-dark transition-colors disabled:opacity-50 min-h-[52px]"
-          >
-            {finding ? '…' : t.findHelp}
-          </button>
-        </div>
+        {/* Primary path — voice-first free-text router */}
+        <VoiceProblemInput
+          language={LANG_TO_SARVAM[lang]}
+          onRouted={handleRouted}
+        />
 
         {/* Router result cards */}
         {routeResult && (
