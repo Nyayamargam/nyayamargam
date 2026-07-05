@@ -117,6 +117,86 @@ On Render: set these as environment variables in the dashboard. On Cloudflare Pa
 - Record fallback videos for every live dependency (network, Sarvam, Gemini) per PRD.
 - Pre-load a prop expired document for the expiry-catch beat.
 
+### Phase 9 — Domain Expansion without Hallucination
+
+**The core tension:** expanding to new domains risks re-introducing exactly the hallucination failure mode the product exists to eliminate. The goal is not to let the LLM answer freely — it is to expand what is *grounded* so more domains are covered without guessing.
+
+#### Three trust tiers
+
+| Tier | Name | Source | UI treatment |
+|---|---|---|---|
+| 🟢 Green | Verified | Hand-curated `pgvector` KB, human-reviewed | Full confident workspace — unchanged from today |
+| 🟡 Amber | Best-effort | Live Gemini grounded retrieval, official-source allowlist only | Cautious card: "This isn't one of our verified areas yet. Here's what we found on [source] — please confirm the exact step with the office before you travel." No full workspace generated. |
+| 🔴 Red | Unknown | Allowlist retrieval found nothing relevant | Today's behaviour: uncertainty statement + helpline. |
+
+**The key invariant:** Amber is grounded-and-cited or it does not answer. A citation to a non-allowlisted source (blog, forum, news) is treated as no citation → Red. The LLM never invents procedure at any tier.
+
+#### Official-source allowlist
+
+Post-filter Gemini's `groundingChunks` to keep only:
+- `*.gov.in`, `*.nic.in`
+- `india.gov.in`, `services.india.gov.in`, UMANG portal
+- State government portals (`*.maharashtra.gov.in`, etc.)
+- Sector regulators (IRDAI, SEBI, TRAI, CEA, NHAI, etc.)
+- `nsap.nic.in`, `parivahan.gov.in`, `sarathi.parivahan.gov.in`, `pmjay.gov.in`, etc.
+
+Store the allowlist in a DB table (`allowed_sources`), not inline code, so adding a new official portal is a data operation, not a deploy.
+
+#### Routing logic
+
+```
+query → classify intent
+  ├─ matches a Green domain → pgvector RAG (unchanged)
+  └─ no Green match
+        ├─ Amber: Gemini grounded retrieval, post-filter to allowlist
+        │     ├─ ≥1 allowlisted citation found → answer strictly from it,
+        │     │     cite it, label Amber visually + in TTS voice,
+        │     │     log query for promotion review
+        │     └─ no allowlisted citation → Red: helpline fallback, log query
+```
+
+#### Schema-driven domain agent (prerequisite refactor)
+
+`orchestration.py` currently hardcodes `DOMAIN_CONFIG` as a Python dict. Before Amber is live, refactor to a `domains` DB table so a new domain is a data record, not a code change:
+
+```sql
+-- domains table (new)
+id          uuid primary key
+code        text unique          -- e.g. 'birth_certificate'
+display     text                 -- shown to user
+context     text                 -- system prompt fragment
+slots       jsonb                -- slot schema
+empty_slots jsonb                -- default null values
+tier        text default 'green' -- 'green' | 'amber'
+```
+
+`orchestration.py` loads domain config from the DB at startup (cached). Adding "scholarships" becomes an `INSERT`, not a PR.
+
+#### Demand-driven promotion (Green ← Amber)
+
+- Every out-of-domain query is logged to an `unmatched_queries` table (query text, timestamp, amber_result: yes/no).
+- High-frequency unmatched patterns (birth certificates, ration cards, caste certificates will appear fast) are flagged for human KB curation.
+- Once a curated `pgvector` knowledge base exists for a domain, flip `tier = 'green'` — it is permanently promoted.
+- Users implicitly tell you what to build next.
+
+#### Persona protection (Lakshmi / Ravi)
+
+Low-literacy users may not register a text disclaimer. Amber must be **visually and aurally distinct**:
+- Different background colour (amber/yellow vs brand colour).
+- TTS reads: "I'm less certain about this one, please check with the office before you travel."
+- Amber does **not** generate a full Case Workspace or PDF draft — only a cited lead card.
+- The confident "you're ready to go" flow is Green only.
+
+#### Sequencing (do not rush)
+
+1. **Now (post-demo):** `domains` table + schema-driven `orchestration.py` refactor. No new behaviour — just makes adding a domain a data task.
+2. **Sprint after:** Amber tier — Gemini grounded retrieval + allowlist filter + cautious UI card.
+3. **Ongoing:** `unmatched_queries` logging + human promotion pipeline. Amber degrades into Green over time.
+
+> For the hackathon demo: depth in three solid Green domains demos better than shaky Amber breadth. Build Phase 9 *after* Phases 1–8 are airtight.
+
+**Free-tier fit:** Gemini grounded search is 5,000 prompts/month free on Gemini 2.x models, then $14/1,000. At demo scale this stays at ₹0.
+
 ---
 
 ## 5. Deployment
