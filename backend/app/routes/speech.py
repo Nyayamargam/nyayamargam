@@ -18,8 +18,8 @@ router = APIRouter(prefix="/speech", tags=["speech"])
 _LANG_MAP = {"en-IN": "en", "hi-IN": "hi", "te-IN": "te"}
 
 _SARVAM_TTS_URL = "https://api.sarvam.ai/text-to-speech"
-# Sarvam bulbul:v1 speaker per language — meera is cross-lingual female
-_TTS_SPEAKER = {"hi-IN": "meera", "te-IN": "arvind", "en-IN": "meera"}
+_TTS_MODEL = "bulbul:v2"
+_TTS_SPEAKER = "anushka"  # cross-lingual female; works for en-IN, hi-IN, te-IN
 
 
 @router.post("/stt")
@@ -73,8 +73,7 @@ async def text_to_speech(body: TTSRequest):
     if not text:
         raise HTTPException(400, "text must not be empty")
 
-    speaker = _TTS_SPEAKER.get(body.language, "meera")
-    logger.info("[TTS] lang=%s speaker=%s len=%d", body.language, speaker, len(text))
+    logger.info("[TTS] lang=%s speaker=%s len=%d", body.language, _TTS_SPEAKER, len(text))
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -83,8 +82,8 @@ async def text_to_speech(body: TTSRequest):
                 json={
                     "inputs": [text],
                     "target_language_code": body.language,
-                    "speaker": speaker,
-                    "model": "bulbul:v1",
+                    "speaker": _TTS_SPEAKER,
+                    "model": _TTS_MODEL,
                 },
                 headers={
                     "api-subscription-key": s.sarvam_api_key,
