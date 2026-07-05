@@ -2,6 +2,36 @@ const BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
 
 export type ValidityStatus = 'pending' | 'valid' | 'expired' | 'invalid' | 'needs_review'
 
+export type RouterAction =
+  | 'SHOW_HELPLINE_NOW'
+  | 'ASK_CLARIFYING_QUESTION'
+  | 'START_INTAKE'
+  | 'START_GROUNDED_INTAKE'
+  | 'LEGAL_NAVIGATOR'
+  | 'OUT_OF_SCOPE_FALLBACK'
+
+export interface Helpline {
+  number: string
+  name: string
+}
+
+export interface RouterDispatch {
+  action: RouterAction
+  tier?: 'GREEN' | 'AMBER'
+  domain?: string | null
+  language?: string
+  // EMERGENCY
+  helpline?: Helpline
+  emergency_type?: string
+  // CLARIFY
+  question?: string
+  // AMBER / LEGAL
+  unverified_disclaimer?: boolean
+  legal_aid?: { name: string; portal: string; note: string }
+  // OUT_OF_SCOPE
+  general_helpline?: Helpline
+}
+
 export interface RejectionExplanation {
   reason_plain: string
   action_plan: string
@@ -124,6 +154,9 @@ export const api = {
     }).then((r) => {
       if (!r.ok) throw new Error(`API ${r.status}`)
     }),
+
+  classifyProblem: (problem: string, language: string) =>
+    post<RouterDispatch>('/classify', { problem, language }),
 
   downloadDraft: async (code: string): Promise<void> => {
     const res = await fetch(`${BASE}/case/${code}/draft.pdf`)
