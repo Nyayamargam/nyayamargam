@@ -36,7 +36,32 @@ export async function transcribeAudio(
   return data
 }
 
-// TTS stub — Phase 7 wires Sarvam TTS and plays audio
-export async function speak(_text: string, _language: SarvamLanguage): Promise<void> {
-  return Promise.resolve()
+let _currentAudio: HTMLAudioElement | null = null
+
+export async function speak(text: string, language: SarvamLanguage): Promise<void> {
+  stopSpeaking()
+
+  const res = await fetch(`${BASE}/speech/tts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, language }),
+  })
+  if (!res.ok) throw new Error(`TTS ${res.status}`)
+
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const audio = new Audio(url)
+  _currentAudio = audio
+  audio.onended = () => {
+    URL.revokeObjectURL(url)
+    if (_currentAudio === audio) _currentAudio = null
+  }
+  await audio.play()
+}
+
+export function stopSpeaking(): void {
+  if (_currentAudio) {
+    _currentAudio.pause()
+    _currentAudio = null
+  }
 }

@@ -4,7 +4,7 @@ import { MessageBubble } from '../components/MessageBubble'
 import { VoiceInput } from '../components/VoiceInput'
 import { getT, setHtmlLang, type Lang } from '../i18n'
 import { type CaseMessage, api } from '../services/api'
-import { type SarvamLanguage } from '../services/sarvam'
+import { speak, stopSpeaking, type SarvamLanguage } from '../services/sarvam'
 
 function ReasoningChip({ text, label }: { text: string; label: string }) {
   const [open, setOpen] = useState(false)
@@ -43,6 +43,8 @@ export function Intake() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [lang, setLang] = useState<string>(localStorage.getItem('navyasathi_lang') || 'en')
+  const [voiceOn, setVoiceOn] = useState(() => localStorage.getItem('navyasathi_voice') === '1')
+  const [speakingIdx, setSpeakingIdx] = useState<number | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const t = getT(lang)
@@ -87,6 +89,9 @@ export function Intake() {
       if (res.reasoning) {
         setReasonings((prev) => ({ ...prev, [assistantIndex]: res.reasoning }))
       }
+      if (voiceOn) {
+        speakMessage(res.reply, assistantIndex)
+      }
       if (res.intake_complete) {
         setTimeout(() => navigate(`/case/${code}`), 1800)
       }
@@ -107,6 +112,29 @@ export function Intake() {
 
   const sarvamLang = LANG_TO_SARVAM[lang] ?? 'en-IN'
 
+  function toggleVoice() {
+    const next = !voiceOn
+    setVoiceOn(next)
+    localStorage.setItem('navyasathi_voice', next ? '1' : '0')
+    if (!next) stopSpeaking()
+  }
+
+  async function speakMessage(text: string, idx: number) {
+    if (speakingIdx === idx) {
+      stopSpeaking()
+      setSpeakingIdx(null)
+      return
+    }
+    setSpeakingIdx(idx)
+    try {
+      await speak(text, sarvamLang)
+    } catch {
+      // TTS failure is non-fatal — user can still read the text
+    } finally {
+      setSpeakingIdx((cur) => (cur === idx ? null : cur))
+    }
+  }
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       <header className="bg-brand text-white px-4 py-3 flex items-center gap-3 shadow">
@@ -117,7 +145,7 @@ export function Intake() {
         >
           ←
         </button>
-        <div>
+        <div className="flex-1">
           <p className="font-semibold text-sm">NavyaSathi</p>
           {code && (
             <p className="text-xs text-blue-200 font-mono tracking-wider">
@@ -125,6 +153,16 @@ export function Intake() {
             </p>
           )}
         </div>
+        <button
+          onClick={toggleVoice}
+          aria-pressed={voiceOn}
+          aria-label={voiceOn ? 'Turn off voice output' : 'Turn on voice output'}
+          className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full transition-colors ${
+            voiceOn ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white'
+          }`}
+        >
+          {voiceOn ? '🔊' : '🔇'}
+        </button>
       </header>
 
       <main
@@ -134,7 +172,12 @@ export function Intake() {
       >
         {messages.map((m, i) => (
           <div key={i}>
-            <MessageBubble role={m.role} content={m.content} />
+            <MessageBubble
+              role={m.role}
+              content={m.content}
+              onSpeak={m.role === 'assistant' ? () => speakMessage(m.content, i) : undefined}
+              speaking={speakingIdx === i}
+            />
             {m.role === 'assistant' && reasonings[i] && (
               <ReasoningChip text={reasonings[i]} label={t.reasoningChip} />
             )}
